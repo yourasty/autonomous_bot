@@ -49,15 +49,14 @@
     <input id="throttle" type="range" min="-100" max="100" value="0" disabled />
     <h3>Steering: <span id="sVal">0</span></h3>
     <input id="steer" type="range" min="-55" max="55" value="0" disabled />
+    <h3>Radar Sweep</h3>
+    <canvas
+      id="radarCanvas"
+      width="300"
+      height="300"
+      style="border: 1px solid #ccc"
+    ></canvas>
     <div class="sensors">
-      <h3>Radar Sweep</h3>
-      <canvas
-        id="radarCanvas"
-        width="300"
-        height="300"
-        style="border: 1px solid #ccc"
-      ></canvas>
-
       <h3>Left</h3>
       <h3>Front</h3>
       <h3>Right</h3>
@@ -70,12 +69,6 @@
 
     <script>
       const logMessages = {
-        AUTO_FORWARD: "[AUTO] Clear path. Moving forward.",
-        AUTO_REVERSE_LEFT: "[AUTO] Obstacle too close. Reversing left",
-        AUTO_REVERSE_RIGHT: "[AUTO] Obstacle too close. Reversing right",
-        AUTO_AVOID_LEFT: "[AUTO] Avoiding: Steer left",
-        AUTO_AVOID_RIGHT: "[AUTO] Avoiding: Steer right",
-        SENSOR_FAIL: "[FAIL] All sensors unresponsive. Rebooting.",
         MODE_SWITCH: "[INFO] Mode changed",
       };
       let ws;
@@ -192,9 +185,9 @@
         }
       }, 50);
 
-      function drawRadarSweep(radarPoints) {
+      function drawRadarSweep(distances) {
         const canvas = document.getElementById("radarCanvas");
-        if (!canvas || !radarPoints) return;
+        if (!canvas || !Array.isArray(distances)) return;
         const ctx = canvas.getContext("2d");
 
         const width = canvas.width;
@@ -205,26 +198,28 @@
 
         ctx.clearRect(0, 0, width, height);
 
-        // Background arc
         ctx.beginPath();
         ctx.arc(cx, cy, radius, Math.PI, 2 * Math.PI);
         ctx.strokeStyle = "#ccc";
         ctx.stroke();
 
-        // Draw radar sweep area
         ctx.beginPath();
         ctx.moveTo(cx, cy);
 
-        radarPoints.forEach((pt, i) => {
-          const angleDeg = pt.angle;
-          const distance = Math.min(pt.distance, 1000);
+        const RADAR_LEFT_ANGLE = 125;
+        const RADAR_RIGHT_ANGLE = 55;
+        const angleStep = 5;
+
+        for (let i = 0; i < distances.length; i++) {
+          const angleDeg = RADAR_LEFT_ANGLE - i * angleStep;
+          const distance = Math.min(distances[i], 1000);
           const angleRad = (angleDeg * Math.PI) / 180;
-          const relAngle = angleRad - Math.PI / 2 - Math.PI / 2; // shift so 90° is up
+          const relAngle = angleRad - Math.PI;
           const r = (distance / 1000) * radius;
           const x = cx + r * Math.cos(relAngle);
           const y = cy + r * Math.sin(relAngle);
           ctx.lineTo(x, y);
-        });
+        }
 
         ctx.closePath();
         ctx.fillStyle = "rgba(0,255,0,0.2)";
